@@ -6,6 +6,11 @@ Inspired by classic games like Zork
 Enhanced version with expanded cave system and descriptive room names
 """
 
+import random
+
+import random
+import time
+
 class Room:
     """Represents a room in the adventure game"""
     def __init__(self, name, description, exits=None, items=None):
@@ -34,6 +39,10 @@ class Game:
         self.inventory = []
         self.rooms = {}
         self.running = True
+        self.player_hp = 10
+        self.player_max_hp = 10
+        self.guardian_hp = 20
+        self.has_shield = False
         self.setup_rooms()
     
     def setup_rooms(self):
@@ -121,8 +130,9 @@ class Game:
             "This chamber was clearly built with purpose. A stone altar stands in the center, covered "
             "with the remains of ancient offerings - dried flowers, rusted coins, and small carved "
             "figures. Strange symbols are carved into the walls, and a feeling of reverence still "
-            "lingers in the air despite the passage of time.",
-            {"west": "mushroom_grove", "east": "the_arsenal", "south": "fossil_gallery"}
+            "lingers in the air despite the passage of time. Something metallic glints behind the altar.",
+            {"west": "mushroom_grove", "east": "the_arsenal", "south": "fossil_gallery"},
+            ["ancient shield"]
         )
         
         # The Echoing Chamber
@@ -226,26 +236,87 @@ class Game:
             print("You can't go that way!")
     
     def handle_treasure_room(self):
-        """Handle the final confrontation in the treasure room"""
+        """Handle the final confrontation in the treasure room with turn-based combat"""
         print("\n" + "="*60)
-        if "shiny dagger" in self.inventory:
-            print("The guardian draws his sword and charges at you!")
-            print("You quickly draw your shiny dagger and meet his attack!")
-            print("\nThe combat is fierce but brief. Your dagger finds its mark,")
-            print("and the guardian falls to his knees, then collapses.")
-            print("\nYou approach the treasure chest and throw it open.")
-            print("Gold coins, precious gems, and ancient artifacts spill out!")
-            print("="*60)
-            print("\n🏆 ✨ CONGRATULATIONS! YOU WIN! ✨ 🏆")
-            print("\nYou have claimed the legendary treasure of the cave!")
+        print("COMBAT BEGINS!")
+        print("="*60)
+        
+        has_dagger = "shiny dagger" in self.inventory
+        
+        # Display initial status
+        print(f"\nYour HP: {self.player_hp}/{self.player_max_hp}")
+        print(f"Guardian HP: {self.guardian_hp}/20")
+        if has_dagger:
+            print("Weapon: Shiny Dagger (2-16 damage)")
         else:
-            print("You have no weapon to defend yourself with!")
-            print("The guardian draws his sword with a menacing grin.")
-            print("\nYou try to dodge, but you're no match for a trained warrior.")
-            print("His blade flashes in the dim light...")
-            print("="*60)
-            print("\n💀 YOU DIED 💀")
-            print("\nGAME OVER - You were slain by the guardian")
+            print("Weapon: Bare hands (1-4 damage)")
+        if self.has_shield:
+            print("Defense: Ancient Shield equipped!")
+        print()
+        
+        # Combat loop
+        combat_round = 1
+        while self.player_hp > 0 and self.guardian_hp > 0:
+            print("-" * 60)
+            print(f"ROUND {combat_round}")
+            print("-" * 60)
+            
+            # Guardian attacks first
+            guardian_damage = random.randint(1, 8)
+            print(f"\n⚔️  The Guardian attacks with his sword!")
+            print(f"   The Guardian deals {guardian_damage} damage!")
+            self.player_hp -= guardian_damage
+            
+            if self.player_hp <= 0:
+                print(f"   Your HP: 0/{self.player_max_hp}")
+                print("\n" + "="*60)
+                print("💀 YOU DIED 💀")
+                print("="*60)
+                print("\nThe guardian's blade proves too much for you.")
+                print("Your vision fades as you collapse to the cold stone floor...")
+                print("\nGAME OVER - You were slain by the guardian")
+                self.running = False
+                return
+            
+            print(f"   Your HP: {self.player_hp}/{self.player_max_hp}")
+            
+            # Player's turn
+            if has_dagger:
+                player_damage = random.randint(2, 16)
+                print(f"\n🗡️  You strike with your shiny dagger!")
+            else:
+                player_damage = random.randint(1, 4)
+                print(f"\n👊 You attack with your bare hands!")
+            
+            print(f"   You deal {player_damage} damage!")
+            self.guardian_hp -= player_damage
+            
+            if self.guardian_hp <= 0:
+                print(f"   Guardian HP: 0/20")
+                print("\n" + "="*60)
+                print("⚔️  VICTORY! ⚔️")
+                print("="*60)
+                print("\nWith a final, decisive blow, the guardian staggers backward!")
+                print("His sword clatters to the ground as he falls to his knees.")
+                print("'You... you have bested me...' he gasps, then collapses.")
+                print("\nYou approach the massive treasure chest and throw it open.")
+                print("Gold coins, precious gems, and ancient artifacts spill out,")
+                print("glittering in the dim light!")
+                print("\n" + "="*60)
+                print("🏆 ✨ CONGRATULATIONS! YOU WIN! ✨ 🏆")
+                print("="*60)
+                print(f"\nYou have claimed the legendary treasure of the cave!")
+                print(f"Final HP: {self.player_hp}/{self.player_max_hp}")
+                print(f"Rounds of combat: {combat_round}")
+                self.running = False
+                return
+            
+            print(f"   Guardian HP: {self.guardian_hp}/20")
+            
+            combat_round += 1
+            
+            # Pause between rounds for readability
+            input("\n[Press Enter to continue to next round...]")
         
         self.running = False
     
@@ -259,6 +330,16 @@ class Game:
                 self.inventory.append(room_item)
                 self.current_room.items.remove(room_item)
                 print(f"You picked up the {room_item}.")
+                
+                # Special handling for the shield
+                if "shield" in room_item.lower():
+                    self.has_shield = True
+                    self.player_max_hp += 5
+                    self.player_hp += 5
+                    print("The ancient shield feels surprisingly light and well-balanced!")
+                    print(f"Your maximum hit points increased to {self.player_max_hp}!")
+                    print(f"Current HP: {self.player_hp}/{self.player_max_hp}")
+                
                 return
         
         print(f"There is no {item} here.")
@@ -281,6 +362,27 @@ class Game:
         else:
             print("\nYour inventory is empty.")
     
+    def show_status(self):
+        """Display player's current status"""
+        print("\n" + "="*60)
+        print("PLAYER STATUS")
+        print("="*60)
+        print(f"Hit Points: {self.player_hp}/{self.player_max_hp}")
+        print(f"Shield Equipped: {'Yes' if self.has_shield else 'No'}")
+        
+        # Show weapon status
+        if "shiny dagger" in self.inventory:
+            print("Weapon: Shiny Dagger (2-16 damage)")
+        else:
+            print("Weapon: Bare hands (1-4 damage)")
+        
+        # Show inventory
+        if self.inventory:
+            print(f"Inventory: {', '.join(self.inventory)}")
+        else:
+            print("Inventory: Empty")
+        print("="*60)
+    
     def show_help(self):
         """Display available commands"""
         print("\n" + "="*60)
@@ -291,6 +393,7 @@ class Game:
         print("  take <item>       - Pick up an item")
         print("  use <item>        - Use an item from your inventory")
         print("  inventory (i)     - Show your inventory")
+        print("  status (st)       - Show your hit points and equipment")
         print("  look (l)          - Look around the current room")
         print("  map               - Show the map (if you have one)")
         print("  help (h)          - Show this help message")
@@ -368,6 +471,9 @@ class Game:
         
         elif action in ['inventory', 'i', 'inv']:
             self.show_inventory()
+        
+        elif action in ['status', 'st', 'stats']:
+            self.show_status()
         
         elif action in ['go', 'move', 'walk']:
             if len(parts) > 1:
