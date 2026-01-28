@@ -4,13 +4,16 @@ A classic text-based adventure game inspired by Zork and other interactive ficti
 
 ## Description
 
-Navigate through a mysterious cave system with **13 interconnected rooms**, collect items, and overcome challenges to win the treasure! This enhanced edition features:
+Navigate through a mysterious cave system with **16 interconnected rooms**, collect items, and overcome challenges to win the treasure! This enhanced edition features:
 
-- 13 unique rooms with descriptive, thematic names
+- 16 unique rooms with descriptive, thematic names
 - Rich, atmospheric descriptions for each location
-- **Turn-based combat system** with hit points and damage rolls
+- **Action-based turn-based combat system** - you control when to attack
+- **Multiple enemies** - Guardian boss and bat encounter
+- **Retreat mechanic** - flee from combat and return later
+- **Hidden secret path** - discover an alternate route for a tactical advantage
 - **Two collectible items**: Shiny Dagger (weapon) and Ancient Shield (defense)
-- Strategic gameplay - find the right equipment before the final battle
+- Strategic gameplay - find the right equipment before battles
 - Multiple endings based on your choices and combat performance
 - Deadly traps to avoid
 - Simple text-based interface with quality-of-life features
@@ -74,26 +77,55 @@ Or if you made it executable:
 
 ## Combat System
 
-The final confrontation with the Guardian uses a turn-based combat system:
+The game features an **action-based turn-based combat system**:
+
+### How Combat Works
+1. When you encounter an enemy, combat begins automatically
+2. **You must use the `attack` command** to fight
+   - `attack` - Attack with bare hands (1-4 damage)
+   - `attack dagger` - Attack with shiny dagger if you have it (2-16 damage)
+3. After you attack, the enemy counterattacks
+4. You can **retreat** from combat at any time to flee
+5. HP persists - if you retreat and return, the fight continues where it left off
+
+### Enemies
+
+**The Guardian** (Final Boss)
+- Location: The Guardian's Lair
+- HP: 20
+- Damage: 1-8 per attack
+- Always attacks after you attack (except surprise attack)
+
+**Large Bat**
+- Location: The Bat Colony
+- HP: 5
+- Damage: 0-3 per attack (can miss)
+- Drops an item when defeated
+
+### Combat Commands
+- `attack` - Attack with bare hands
+- `attack <weapon>` - Attack with specific weapon (e.g., `attack dagger`)
+- `retreat` - Flee from combat (HP damage persists)
+- `status` - Check your HP during combat
+
+### Secret Path
+There's a hidden path that allows you to surprise the Guardian! If you find it, you get **one free attack before he can respond**. This can be the difference between victory and defeat!
 
 ### Combat Statistics
 - **Your HP**: 10 (15 with Ancient Shield)
 - **Guardian HP**: 20
-- **Guardian Damage**: 1-8 per hit
+- **Bat HP**: 5
 - **Your Damage (bare hands)**: 1-4 per hit
 - **Your Damage (with Shiny Dagger)**: 2-16 per hit
-
-### Combat Rules
-1. The Guardian **always attacks first** each round
-2. You attack second each round
-3. Combat continues until someone reaches 0 HP
-4. Damage is randomly rolled each attack within the ranges above
+- **Guardian Damage**: 1-8 per hit
+- **Bat Damage**: 0-3 per hit
 
 ### Strategy Tips
-- **Shiny Dagger is essential** - Without it, your damage is too low to win
-- **Ancient Shield gives +5 max HP** - Provides crucial survivability
-- **Finding both items** gives you the best chance of victory
-- Even with both items, victory is not guaranteed - combat is partly luck-based!
+- **The Shiny Dagger is essential** - 1-4 damage is usually not enough
+- **The Ancient Shield provides crucial HP** - 15 HP gives you more survivability
+- **You can retreat and heal** if you find healing items
+- **The secret path gives you a huge advantage** - find it for an easier fight!
+- **Combat is partly luck-based** - damage varies each hit
 
 ## The 13 Rooms
 
@@ -111,9 +143,11 @@ The final confrontation with the Guardian uses a turn-based combat system:
 9. **The Echoing Chamber** - A vast room with incredible acoustics
 10. **The Fossil Gallery** - Prehistoric creatures frozen in stone
 11. **The Stalactite Forest** - Massive mineral formations hang like stone icicles
-12. **The Bat Colony** - Home to thousands of bats
-13. **The Collapsed Tunnel** - A partially blocked passage
+12. **The Bat Colony** - Home to thousands of bats (and one aggressive bat!) 🦇
+13. **The Collapsed Tunnel** - A partially blocked passage (hint: look carefully!)
 14. **The Underground River** - A dark, swift-flowing subterranean waterway
+15. **The Hidden Tunnel** - A secret cramped passage (must be discovered)
+16. **The Guardian's Lair (Behind)** - Back entrance to the treasure room (surprise!)
 
 ## Game Map
 

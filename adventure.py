@@ -42,7 +42,12 @@ class Game:
         self.player_hp = 10
         self.player_max_hp = 10
         self.guardian_hp = 20
+        self.bat_hp = 5
         self.has_shield = False
+        self.in_combat = False
+        self.combat_enemy = None
+        self.surprised_guardian = False
+        self.bat_defeated = False
         self.setup_rooms()
     
     def setup_rooms(self):
@@ -184,8 +189,27 @@ class Game:
             "and rubble block what was once a wider corridor. You can see gaps between the rocks "
             "where you might be able to squeeze through, but it looks precarious. Dust still hangs "
             "in the air, disturbed by your arrival. You wonder what lies beyond the rubble... or "
-            "what caused the collapse in the first place.",
-            {"south": "stalactite_forest", "east": "underground_river"}
+            "what caused the collapse in the first place. Wait - is that a small opening near the floor?",
+            {"south": "stalactite_forest", "east": "underground_river", "down": "hidden_tunnel"}
+        )
+        
+        # Hidden Tunnel (secret path to Guardian's Lair)
+        self.rooms['hidden_tunnel'] = Room(
+            "The Hidden Tunnel",
+            "You've squeezed through a narrow opening into a cramped, dark tunnel. The passage is barely "
+            "wide enough to crawl through. As you move forward, you notice the tunnel slopes downward and "
+            "curves to the right. You can hear faint sounds ahead - the echo of a voice, perhaps? The air "
+            "feels different here, warmer. You realize this tunnel must lead somewhere important.",
+            {"up": "collapsed_tunnel", "forward": "guardians_lair_back"}
+        )
+        
+        # Guardian's Lair (back entrance)
+        self.rooms['guardians_lair_back'] = Room(
+            "The Guardian's Lair (Behind)",
+            "You emerge from the hidden tunnel behind the massive treasure chest! The guardian stands "
+            "on the other side, facing the main entrance. He hasn't noticed you yet - you have the element "
+            "of surprise! You could attack now while his back is turned, or try to sneak around.",
+            {"back": "hidden_tunnel"}
         )
         
         # The Underground River
@@ -206,6 +230,11 @@ class Game:
         """Move to a different room"""
         direction = direction.lower()
         
+        # Don't allow movement during combat
+        if self.in_combat:
+            print("You can't move while in combat! Use 'retreat' to flee.")
+            return
+        
         if direction in self.current_room.exits:
             next_room_key = self.current_room.exits[direction]
             
@@ -223,11 +252,31 @@ class Game:
                 self.running = False
                 return
             
-            # Special handling for The Guardian's Lair (treasure room)
+            # Special handling for Bat Colony (bat enemy)
+            if next_room_key == 'bat_colony' and not self.bat_defeated:
+                self.current_room = self.rooms[next_room_key]
+                self.current_room.describe()
+                print("\n" + "="*60)
+                print("A large bat swoops down from the ceiling, screeching!")
+                print("It's attacking you!")
+                print("="*60)
+                self.start_combat('bat')
+                return
+            
+            # Special handling for The Guardian's Lair (treasure room from front)
             if next_room_key == 'guardians_lair':
                 self.current_room = self.rooms[next_room_key]
                 self.current_room.describe()
-                self.handle_treasure_room()
+                self.start_combat('guardian', surprised=False)
+                return
+            
+            # Special handling for Guardian's Lair from behind (surprise attack)
+            if next_room_key == 'guardians_lair_back':
+                self.current_room = self.rooms[next_room_key]
+                self.current_room.describe()
+                print("\nYou have the element of surprise! You can attack first.")
+                self.surprised_guardian = True
+                self.start_combat('guardian', surprised=True)
                 return
             
             self.current_room = self.rooms[next_room_key]
@@ -235,90 +284,183 @@ class Game:
         else:
             print("You can't go that way!")
     
-    def handle_treasure_room(self):
-        """Handle the final confrontation in the treasure room with turn-based combat"""
-        print("\n" + "="*60)
-        print("COMBAT BEGINS!")
-        print("="*60)
+    def start_combat(self, enemy_type, surprised=False):
+        """Initialize combat with an enemy"""
+        self.in_combat = True
+        self.combat_enemy = enemy_type
+        
+        if enemy_type == 'guardian' and not surprised:
+            print("\n" + "="*60)
+            print("COMBAT BEGINS!")
+            print("="*60)
+            self.show_combat_status()
+        elif enemy_type == 'guardian' and surprised:
+            print("\n" + "="*60)
+            print("SURPRISE ATTACK!")
+            print("="*60)
+            print("You have the first strike! The guardian hasn't noticed you yet.")
+            self.show_combat_status()
+        elif enemy_type == 'bat':
+            print("\nCOMBAT: Large Bat")
+            self.show_combat_status()
+    
+    def show_combat_status(self):
+        """Display current combat status"""
+        print(f"\nYour HP: {self.player_hp}/{self.player_max_hp}")
+        
+        if self.combat_enemy == 'guardian':
+            print(f"Guardian HP: {self.guardian_hp}/20")
+        elif self.combat_enemy == 'bat':
+            print(f"Bat HP: {self.bat_hp}/5")
         
         has_dagger = "shiny dagger" in self.inventory
-        
-        # Display initial status
-        print(f"\nYour HP: {self.player_hp}/{self.player_max_hp}")
-        print(f"Guardian HP: {self.guardian_hp}/20")
         if has_dagger:
-            print("Weapon: Shiny Dagger (2-16 damage)")
+            print("Weapon equipped: Shiny Dagger")
         else:
-            print("Weapon: Bare hands (1-4 damage)")
+            print("Weapon: Bare hands")
+        
         if self.has_shield:
-            print("Defense: Ancient Shield equipped!")
+            print("Shield: Equipped")
         print()
+    
+    def attack(self, weapon=None):
+        """Player attacks during combat"""
+        if not self.in_combat:
+            print("You're not in combat!")
+            return
         
-        # Combat loop
-        combat_round = 1
-        while self.player_hp > 0 and self.guardian_hp > 0:
-            print("-" * 60)
-            print(f"ROUND {combat_round}")
-            print("-" * 60)
-            
-            # Guardian attacks first
-            guardian_damage = random.randint(1, 8)
-            print(f"\n⚔️  The Guardian attacks with his sword!")
-            print(f"   The Guardian deals {guardian_damage} damage!")
-            self.player_hp -= guardian_damage
-            
-            if self.player_hp <= 0:
-                print(f"   Your HP: 0/{self.player_max_hp}")
-                print("\n" + "="*60)
-                print("💀 YOU DIED 💀")
-                print("="*60)
-                print("\nThe guardian's blade proves too much for you.")
-                print("Your vision fades as you collapse to the cold stone floor...")
-                print("\nGAME OVER - You were slain by the guardian")
-                self.running = False
-                return
-            
-            print(f"   Your HP: {self.player_hp}/{self.player_max_hp}")
-            
-            # Player's turn
-            if has_dagger:
-                player_damage = random.randint(2, 16)
-                print(f"\n🗡️  You strike with your shiny dagger!")
-            else:
-                player_damage = random.randint(1, 4)
-                print(f"\n👊 You attack with your bare hands!")
-            
-            print(f"   You deal {player_damage} damage!")
+        # Determine damage
+        if weapon and weapon.lower() in ['dagger', 'shiny dagger'] and "shiny dagger" in self.inventory:
+            player_damage = random.randint(2, 16)
+            print(f"🗡️  You strike with your shiny dagger!")
+        else:
+            player_damage = random.randint(1, 4)
+            print(f"👊 You attack with your bare hands!")
+        
+        # Apply damage to enemy
+        if self.combat_enemy == 'guardian':
             self.guardian_hp -= player_damage
+            print(f"   You deal {player_damage} damage!")
+            print(f"   Guardian HP: {max(0, self.guardian_hp)}/20")
             
+            # Check if guardian is defeated
             if self.guardian_hp <= 0:
-                print(f"   Guardian HP: 0/20")
-                print("\n" + "="*60)
-                print("⚔️  VICTORY! ⚔️")
-                print("="*60)
-                print("\nWith a final, decisive blow, the guardian staggers backward!")
-                print("His sword clatters to the ground as he falls to his knees.")
-                print("'You... you have bested me...' he gasps, then collapses.")
-                print("\nYou approach the massive treasure chest and throw it open.")
-                print("Gold coins, precious gems, and ancient artifacts spill out,")
-                print("glittering in the dim light!")
-                print("\n" + "="*60)
-                print("🏆 ✨ CONGRATULATIONS! YOU WIN! ✨ 🏆")
-                print("="*60)
-                print(f"\nYou have claimed the legendary treasure of the cave!")
-                print(f"Final HP: {self.player_hp}/{self.player_max_hp}")
-                print(f"Rounds of combat: {combat_round}")
-                self.running = False
+                self.win_game()
                 return
             
-            print(f"   Guardian HP: {self.guardian_hp}/20")
+            # Guardian counter-attacks (unless surprised on first turn)
+            if self.surprised_guardian:
+                print("\nThe guardian spins around, startled by your attack!")
+                print("He draws his sword to defend himself!")
+                self.surprised_guardian = False
+            else:
+                self.guardian_counterattack()
+                
+        elif self.combat_enemy == 'bat':
+            self.bat_hp -= player_damage
+            print(f"   You deal {player_damage} damage!")
+            print(f"   Bat HP: {max(0, self.bat_hp)}/5")
             
-            combat_round += 1
+            # Check if bat is defeated
+            if self.bat_hp <= 0:
+                print("\n" + "="*60)
+                print("The bat screeches one last time and falls to the ground!")
+                print("You notice something among the guano on the floor...")
+                print("You found: bat guano")
+                print("="*60)
+                self.inventory.append("bat guano")
+                self.bat_defeated = True
+                self.in_combat = False
+                self.combat_enemy = None
+                return
             
-            # Pause between rounds for readability
-            input("\n[Press Enter to continue to next round...]")
+            # Bat counter-attacks
+            self.bat_counterattack()
+    
+    def guardian_counterattack(self):
+        """Guardian attacks the player"""
+        guardian_damage = random.randint(1, 8)
+        print(f"\n⚔️  The Guardian strikes back with his sword!")
+        print(f"   The Guardian deals {guardian_damage} damage!")
+        self.player_hp -= guardian_damage
+        print(f"   Your HP: {max(0, self.player_hp)}/{self.player_max_hp}")
         
+        if self.player_hp <= 0:
+            print("\n" + "="*60)
+            print("💀 YOU DIED 💀")
+            print("="*60)
+            print("\nThe guardian's blade proves too much for you.")
+            print("Your vision fades as you collapse to the cold stone floor...")
+            print("\nGAME OVER - You were slain by the guardian")
+            self.running = False
+            self.in_combat = False
+    
+    def bat_counterattack(self):
+        """Bat attacks the player"""
+        bat_damage = random.randint(0, 3)
+        if bat_damage == 0:
+            print(f"\n🦇 The bat swoops at you but misses!")
+        else:
+            print(f"\n🦇 The bat scratches you with its claws!")
+            print(f"   The bat deals {bat_damage} damage!")
+            self.player_hp -= bat_damage
+            print(f"   Your HP: {max(0, self.player_hp)}/{self.player_max_hp}")
+        
+        if self.player_hp <= 0:
+            print("\n" + "="*60)
+            print("💀 YOU DIED 💀")
+            print("="*60)
+            print("\nThe bat's relentless attacks have overwhelmed you.")
+            print("\nGAME OVER - You were killed by a bat")
+            self.running = False
+            self.in_combat = False
+    
+    def retreat(self):
+        """Flee from combat"""
+        if not self.in_combat:
+            print("You're not in combat!")
+            return
+        
+        print("\n" + "="*60)
+        print("You retreat from combat!")
+        print("="*60)
+        
+        if self.combat_enemy == 'guardian':
+            print("You flee from the Guardian's Lair!")
+            print("The guardian doesn't pursue you beyond his chamber.")
+            print("Your HP and the guardian's HP remain as they were.")
+            # Move back to warning chamber
+            self.current_room = self.rooms['warning_chamber']
+        elif self.combat_enemy == 'bat':
+            print("You flee from the bat!")
+            print("It returns to roosting with the others.")
+            print("Your HP and the bat's HP remain as they were.")
+            # Move back to previous room (stalactite forest or mushroom grove)
+            self.current_room = self.rooms['stalactite_forest']
+        
+        self.in_combat = False
+        self.combat_enemy = None
+        self.current_room.describe()
+    
+    def win_game(self):
+        """Player wins the game"""
+        print(f"   Guardian HP: 0/20")
+        print("\n" + "="*60)
+        print("⚔️  VICTORY! ⚔️")
+        print("="*60)
+        print("\nWith a final, decisive blow, the guardian staggers backward!")
+        print("His sword clatters to the ground as he falls to his knees.")
+        print("'You... you have bested me...' he gasps, then collapses.")
+        print("\nYou approach the massive treasure chest and throw it open.")
+        print("Gold coins, precious gems, and ancient artifacts spill out,")
+        print("glittering in the dim light!")
+        print("\n" + "="*60)
+        print("🏆 ✨ CONGRATULATIONS! YOU WIN! ✨ 🏆")
+        print("="*60)
+        print(f"\nYou have claimed the legendary treasure of the cave!")
+        print(f"Final HP: {self.player_hp}/{self.player_max_hp}")
         self.running = False
+        self.in_combat = False
     
     def take(self, item):
         """Pick up an item from the current room"""
@@ -350,8 +492,24 @@ class Game:
         
         for inv_item in self.inventory:
             if item in inv_item.lower():
-                print(f"You can't use the {inv_item} right now.")
-                return
+                # Special handling for bat guano (healing item)
+                if "guano" in inv_item.lower():
+                    if self.player_hp >= self.player_max_hp:
+                        print(f"You're already at full health ({self.player_hp}/{self.player_max_hp})!")
+                        print("You decide not to use the guano right now.")
+                        return
+                    
+                    print(f"You cautiously consume the bat guano...")
+                    print("Despite the awful taste, you feel reinvigorated!")
+                    heal_amount = self.player_max_hp - self.player_hp
+                    self.player_hp = self.player_max_hp
+                    print(f"You healed {heal_amount} HP!")
+                    print(f"Current HP: {self.player_hp}/{self.player_max_hp}")
+                    self.inventory.remove(inv_item)
+                    return
+                else:
+                    print(f"You can't use the {inv_item} right now.")
+                    return
         
         print(f"You don't have a {item}.")
     
@@ -388,15 +546,24 @@ class Game:
         print("\n" + "="*60)
         print("AVAILABLE COMMANDS")
         print("="*60)
-        print("  go <direction>    - Move in a direction (north, south, east, west)")
-        print("  <direction>       - Shortcut: just type the direction (n, s, e, w)")
+        print("MOVEMENT:")
+        print("  go <direction>    - Move in a direction")
+        print("  <direction>       - Shortcut: north/south/east/west/up/down/forward/back")
+        print("                      or n/s/e/w/u/d/f/b")
+        print("\nCOMBAT:")
+        print("  attack            - Attack with bare hands")
+        print("  attack <weapon>   - Attack with a specific weapon (e.g., 'attack dagger')")
+        print("  retreat           - Flee from combat")
+        print("\nITEMS:")
         print("  take <item>       - Pick up an item")
         print("  use <item>        - Use an item from your inventory")
         print("  inventory (i)     - Show your inventory")
+        print("\nINFORMATION:")
         print("  status (st)       - Show your hit points and equipment")
         print("  look (l)          - Look around the current room")
-        print("  map               - Show the map (if you have one)")
+        print("  map               - Show the cave map")
         print("  help (h)          - Show this help message")
+        print("\nGAME:")
         print("  quit (q)          - Quit the game")
         print("="*60)
     
@@ -481,11 +648,33 @@ class Game:
             else:
                 print("Go where? Specify a direction (north, south, east, west).")
         
-        elif action in ['north', 'south', 'east', 'west', 'n', 's', 'e', 'w']:
+        elif action in ['north', 'south', 'east', 'west', 'n', 's', 'e', 'w', 'down', 'd', 'up', 'u', 'forward', 'f', 'back', 'b']:
             # Allow direct direction commands
-            direction_map = {'n': 'north', 's': 'south', 'e': 'east', 'w': 'west'}
+            direction_map = {
+                'n': 'north', 's': 'south', 'e': 'east', 'w': 'west',
+                'd': 'down', 'u': 'up', 'f': 'forward', 'b': 'back'
+            }
             direction = direction_map.get(action, action)
             self.move(direction)
+        
+        elif action in ['attack', 'a', 'fight', 'strike', 'hit']:
+            if len(parts) > 1 and parts[1] in ['with', 'using']:
+                # Attack with specific weapon: "attack with dagger"
+                if len(parts) > 2:
+                    weapon = ' '.join(parts[2:])
+                    self.attack(weapon)
+                else:
+                    print("Attack with what weapon?")
+            elif len(parts) > 1:
+                # Attack with weapon: "attack dagger"
+                weapon = ' '.join(parts[1:])
+                self.attack(weapon)
+            else:
+                # Just "attack" - use bare hands
+                self.attack()
+        
+        elif action in ['retreat', 'flee', 'run', 'escape']:
+            self.retreat()
         
         elif action in ['take', 'get', 'grab', 'pick', 'pickup']:
             if len(parts) > 1:

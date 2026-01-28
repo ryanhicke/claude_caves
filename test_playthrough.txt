@@ -1,0 +1,48 @@
+# Test Playthrough: Demonstrating New Features
+
+## Test 1: Bat Combat and Healing
+Commands:
+- east
+- north  
+- east (triggers bat combat)
+- attack (fight bat with bare hands)
+- attack
+- attack (should defeat bat and get guano)
+- use guano (should heal if damaged)
+
+## Test 2: Retreat from Combat
+Commands:
+- north
+- take dagger
+- east
+- east (fight guardian)
+- attack dagger
+- retreat (flee from combat)
+- look (should be back at warning chamber)
+
+## Test 3: Secret Path Surprise Attack
+Commands:
+- west
+- north
+- east
+- take shield
+- east
+- take dagger
+- south
+- east
+- south
+- north (to collapsed tunnel)
+- down (enter hidden tunnel)
+- forward (surprise attack on guardian from behind!)
+- attack dagger (free hit!)
+- attack dagger (guardian fights back now)
+- attack dagger (finish him!)
+
+This demonstrates:
+✓ Action-based combat (must use attack command)
+✓ Bat enemy encounter  
+✓ Guano healing item (dropped by bat)
+✓ Retreat mechanic (HP persists)
+✓ Hidden tunnel discovery
+✓ Surprise attack (one free hit)
+✓ Both items for optimal combat

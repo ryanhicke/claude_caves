@@ -56,3 +56,5 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+files.zip
